@@ -15,6 +15,7 @@ import java.util.List;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.IOException;
+import java.security.Principal;
 import java.util.UUID;
 
 @Controller
@@ -26,17 +27,17 @@ public class BoardController {
 	@Autowired
 	private CommentRepository commentRepository;
 
-	@GetMapping("/board/login")
-	public String login() {
-		return "board/login"; // 이 파일이 templates/board/login.html
-	}
-
-	// 게시글 목록 조회
+	// ✅ 게시글 목록 (인증 여부 확인 포함)
 	@GetMapping("/list")
-	public String list(Model model) {
+	public String getBoardList(Model model, Principal principal) {
+		if (principal == null) {
+			return "redirect:/board/login";
+		}
+
 		List<Board> boardList = boardRepository.findAll();
 		model.addAttribute("boardList", boardList);
-		return "board/list"; // list.html 템플릿과 연결
+		model.addAttribute("username", principal.getName());
+		return "board/list";
 	}
 
 	// 게시글 작성 폼
@@ -92,13 +93,20 @@ public class BoardController {
 
 	// 게시글 상세 조회
 	@GetMapping("/view/{id}")
-	public String view(@PathVariable Long id, Model model) {
+	public String view(@PathVariable Long id, Model model, Principal principal) {
+		if (principal == null) {
+			return "redirect:/board/login";
+		}
+
 		Board board = boardRepository.findById(id).orElse(null);
+		if (board == null) {
+			return "redirect:/board/list"; // 게시글 자체가 없으면 목록으로
+		}
+
 		model.addAttribute("board", board);
 
 		List<Comment> commentList = commentRepository.findByBoardId(id);
 		model.addAttribute("commentList", commentList);
-
 		model.addAttribute("comment", new Comment()); // 댓글 입력용
 		return "board/view";
 	}
